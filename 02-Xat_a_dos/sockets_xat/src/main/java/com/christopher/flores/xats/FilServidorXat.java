@@ -20,6 +20,7 @@ public class FilServidorXat extends Thread {
         // Se romperá el bucle si recibe la palabra "sortir"
         System.out.println("Fil de xat finalitzat.");
         System.out.println(msg);
+        entrada.close();
         return true;
     }
     

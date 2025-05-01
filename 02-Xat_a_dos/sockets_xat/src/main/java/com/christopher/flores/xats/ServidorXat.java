@@ -1,12 +1,11 @@
 package com.christopher.flores.xats;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Scanner;
 
 public class ServidorXat {
     
@@ -33,14 +32,15 @@ public class ServidorXat {
         objectOut.writeObject("Escriu el teu nom:");
         objectOut.flush();
         String msgRebut = (String) entrada.readObject();
+        if (msgRebut.equalsIgnoreCase(MSG_SORTIR)) return null;
         System.out.println("Nom rebut: " + msgRebut);     
         return msgRebut;     
     }
     
     public void paraServidor() throws IOException {
         // se cierra el servidor
-        if (objectIn != null) objectIn.close();
         if (objectOut != null) objectOut.close();
+        if (objectIn != null) objectIn.close();
         if (clientSocket != null && !clientSocket.isClosed()) clientSocket.close();
         if (serverSocket != null && !serverSocket.isClosed()) serverSocket.close();
         System.out.println("Servidor aturat.");
@@ -48,6 +48,7 @@ public class ServidorXat {
 
     public static void main(String[] args) {
         ServidorXat servidor = new ServidorXat();
+        Scanner scanner = new Scanner(System.in);
         try {
             servidor.iniciarServidor();
 
@@ -62,20 +63,26 @@ public class ServidorXat {
             // Obtengo el nombre del cliente
             String nomFil = servidor.getNom(servidor.objectIn);
 
+            if (nomFil == null) {
+                servidor.paraServidor();
+                return;
+            }
+
             // instancio el hilo del servidor y lo inicio
             FilServidorXat filServidor = new FilServidorXat(servidor.objectIn, nomFil);
             filServidor.start();
 
-            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             String msg;
 
             while (true) {
-                msg = br.readLine();
+                msg = scanner.nextLine();
 
                 servidor.objectOut.writeObject(msg);
                 servidor.objectOut.flush();
 
-                if (msg.equalsIgnoreCase(MSG_SORTIR)) break;
+                if (msg.equalsIgnoreCase(MSG_SORTIR)) {
+                    break;
+                }
             }
             
             // espera aque el hilo del servidor termine
@@ -86,7 +93,7 @@ public class ServidorXat {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
+            scanner.close();
         }        
     }
-
 }

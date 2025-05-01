@@ -1,12 +1,10 @@
 package com.christopher.flores.xats;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.util.Scanner;
 
 public class ClientXat {
 
@@ -14,58 +12,78 @@ public class ClientXat {
     static final String HOST = ServidorXat.HOST;
 
     private Socket socket;
-    private InputStream entrada;
-    private OutputStream sortida;
+    private ObjectInputStream entrada;
+    private ObjectOutputStream sortida;
     
-    public void connecta() {
-        try {
-            System.out.println("Client connectat a localhost:" + PORT);
-            socket = new Socket(HOST, PORT);
+    public void connecta() throws IOException {
+        System.out.println("Client connectat a localhost:" + PORT);
+        socket = new Socket(HOST, PORT);
 
-            // crear los streams de entrada y salida
-            entrada = socket.getInputStream();
-            sortida = socket.getOutputStream();
-        
-        } catch (UnknownHostException e) {
-            System.err.println("ERROR: HOST inexistente: " + e.getMessage());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        // crear los streams de entrada y salida
+        sortida = new ObjectOutputStream(socket.getOutputStream());
+        entrada = new ObjectInputStream(socket.getInputStream());
     }
 
-    public void enviarMissatge(String missatge) {
-        try {
-            // Convertir el mensaje a bytes y enviarlo al servidor
-            sortida.write(missatge.getBytes());
-            sortida.flush();
-        } catch (IOException e) {
-            System.err.println("Error al enviar el missatge: " + e.getMessage());
-        }
+    public void enviarMissatge(String missatge) throws IOException {
+        System.out.println("Enviant missatge: " + missatge);
+        sortida.writeObject(missatge);
+        sortida.flush();
     }
 
     public void tancaClient() throws IOException{
-        if (entrada != null) entrada.close();
+        System.out.println("Tancant client...");
         if (sortida != null) sortida.close();
+        if (entrada != null) entrada.close();
         if (socket != null && !socket.isClosed()) socket.close();
         System.out.println("Cliente tancat.");
     }
 
-    
-
     public static void main(String[] args){
         ClientXat client = new ClientXat();
+        Scanner scanner = new Scanner(System.in);
+        Boolean primerMissatge = true;
+        Boolean segonMissatge = false;
+
         try {
             client.connecta();
-            ObjectOutputStream out = new ObjectOutputStream(client.socket.getOutputStream());
-            ObjectInputStream in = new ObjectInputStream(client.socket.getInputStream());
+            System.out.println("Flux d'entrada i sortida creat");
     
-            FilLectorCX filLectorCX = new FilLectorCX(in, out);
+            FilLectorCX filLectorCX = new FilLectorCX(client.entrada, client.sortida);
             filLectorCX.start();
+
+            String msgEnviat;
+
+            while (true) {
+                // Se imprime el segundo mensaje con su formato especial
+                if (segonMissatge) System.out.print("Missatge ('sortir' per tancar): ");
+                msgEnviat = scanner.nextLine();
+                
+                if (msgEnviat.equalsIgnoreCase(FilLectorCX.MSG_SORTIR)) {
+                    client.enviarMissatge(msgEnviat);
+                    break;
+                }
+                
+                // Se envía el primer mensaje que contiene el nombre del cliente
+                if (primerMissatge) {
+                    client.enviarMissatge(msgEnviat);
+                    primerMissatge = false;
+                    segonMissatge = true;
+                } else if (segonMissatge) { 
+                    // Se envia el segundo mensaje al servidor
+                    client.enviarMissatge(msgEnviat);
+                    segonMissatge = false;
+                } else {
+                    // Se envía el mensaje al servidor  
+                    client.enviarMissatge(msgEnviat);
+                }
+            }
+
             filLectorCX.join();
             client.tancaClient();
         } catch (Exception e) {
             // TODO: handle exception
+        } finally {
+            scanner.close();
         }
-
     }
 }
