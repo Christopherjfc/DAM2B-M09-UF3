@@ -94,6 +94,7 @@ public class ClientXat {
             if (entrada != null) entrada.close();
             if (socket != null) socket.close();
             System.out.println("Connexió tancada.");
+            System.exit(0);
         } catch (IOException e) {
             System.err.println("Error al tancar el client: " + e.getMessage());
         }
